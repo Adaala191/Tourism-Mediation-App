@@ -1,63 +1,53 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
+// Load environment variables
+dotenv.config();
+
+// Log MONGO_URI to verify it's being read correctly
+console.log('MONGO_URI:', process.env.MONGO_URI);
+
 // Import models
 const User = require('./models/user');
 const Service = require('./models/service');
 const Booking = require('./models/booking');
 
-dotenv.config();
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log('MongoDB connected');
-}).catch(err => {
-  console.error('MongoDB connection error:', err.message);
-});
+// Connect to MongoDB using the MONGO_URI from .env
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1); // Exit process on connection error
+  });
 
 // Test the models
 const testModels = async () => {
   try {
-    // Create a test user
-    const user = new User({
-      name: 'Test User',
-      email: 'testuser@example.com',
-      password: 'hashedpassword',
-      role: 'Client',
-    });
-    const savedUser = await user.save();
-    console.log('User saved:', savedUser);
+    // Check if the user already exists
+    const existingUser = await User.findOne({ email: 'testuser@example.com' });
+    if (!existingUser) {
+      const user = new User({
+        name: 'Test User',
+        email: 'testuser@example.com',
+        password: 'hashedpassword',
+        role: 'Client',
+      });
+      const savedUser = await user.save();
+      console.log('User saved:', savedUser);
+    } else {
+      console.log('User already exists:', existingUser);
+    }
 
-    // Create a test service
-    const service = new Service({
-      name: 'Luxury Hotel',
-      type: 'Hotel',
-      description: 'A five-star hotel in the city center',
-      price: 300,
-      location: 'New York',
-      providerId: savedUser._id,
-    });
-    const savedService = await service.save();
-    console.log('Service saved:', savedService);
+    // You can add more tests here for Service and Booking models if needed
 
-    // Create a test booking
-    const booking = new Booking({
-      clientId: savedUser._id,
-      serviceId: savedService._id,
-      date: new Date(),
-    });
-    const savedBooking = await booking.save();
-    console.log('Booking saved:', savedBooking);
-
-    // Exit the script
-    mongoose.disconnect();
   } catch (error) {
     console.error('Error testing models:', error.message);
-    mongoose.disconnect();
+  } finally {
+    mongoose.disconnect(); // Disconnect from MongoDB after testing
   }
 };
 
+// Execute the test function
 testModels();
